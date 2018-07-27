@@ -55,12 +55,14 @@ RENDER_PIPELINE_PLUGIN_CREATOR(rpplugins::ImGuiPlugin)
 
 namespace rpplugins {
 
+RENDER_PIPELINE_PLUGIN_DOWNCAST_IMPL(ImGuiPlugin);
+
 const char* ImGuiPlugin::NEW_FRAME_EVENT_NAME = "imgui-new-frame";
 const char* ImGuiPlugin::SETUP_CONTEXT_EVENT_NAME = "imgui-setup-context";
 
 rpcore::BasePlugin::RequrieType ImGuiPlugin::require_plugins_;
 
-ImGuiPlugin::ImGuiPlugin(rpcore::RenderPipeline& pipeline): BasePlugin(pipeline, RPPLUGINS_ID_STRING)
+ImGuiPlugin::ImGuiPlugin(rpcore::RenderPipeline& pipeline): BasePlugin(pipeline, RPPLUGIN_ID_STRING)
 {
 }
 
@@ -146,7 +148,7 @@ void ImGuiPlugin::setup_context(const Event* ev)
     }
 
     auto task = DCAST(rppanda::FunctionalTask, ptr);
-    task->set_user_data(std::shared_ptr<ImGuiContext>(get_context(), [](auto) {}));
+    task->set_user_data(std::shared_ptr<ImGuiContext>(get_context(), [](ImGuiContext*) {}));
     add_task(task);
 }
 
