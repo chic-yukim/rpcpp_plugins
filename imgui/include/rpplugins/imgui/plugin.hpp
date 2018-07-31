@@ -48,7 +48,7 @@ public:
 
 public:
     ImGuiPlugin(rpcore::RenderPipeline& pipeline);
-    
+
     virtual ~ImGuiPlugin();
 
     RequrieType& get_required_plugins(void) const override;

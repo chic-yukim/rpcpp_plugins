@@ -3,7 +3,7 @@
 cmake_minimum_required(VERSION 3.10.2)
 
 get_filename_component(RPPLUGIN_ID ${CMAKE_CURRENT_LIST_DIR} NAME)
-project(rpplugins_${RPPLUGIN_ID}
+project(rpplugin_${RPPLUGIN_ID}
     VERSION 0.1.0
     DESCRIPTION "Plugin for imgui"
     LANGUAGES CXX
