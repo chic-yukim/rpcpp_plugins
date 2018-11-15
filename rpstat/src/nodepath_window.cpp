@@ -67,15 +67,15 @@ void NodePathWindow::draw_contents()
     if (ImGui::CollapsingHeader("Transforms", ImGuiTreeNodeFlags_::ImGuiTreeNodeFlags_DefaultOpen))
     {
         LVecBase3f pos = np_.get_pos();
-        if (ImGui::InputFloat3("Position", &pos[0]))
+        if (ImGui::InputFloat3("Position", &pos[0], 3, ImGuiInputTextFlags_EnterReturnsTrue))
             np_.set_pos(pos);
 
         LVecBase3f hpr = np_.get_hpr();
-        if (ImGui::InputFloat3("HPR", &hpr[0]))
+        if (ImGui::InputFloat3("HPR", &hpr[0], 3, ImGuiInputTextFlags_EnterReturnsTrue))
             np_.set_hpr(hpr);
 
         LVecBase3f scale = np_.get_scale();
-        if (ImGui::InputFloat3("Scale", &scale[0]))
+        if (ImGui::InputFloat3("Scale", &scale[0], 3, ImGuiInputTextFlags_EnterReturnsTrue))
             np_.set_scale(scale);
     }
 
