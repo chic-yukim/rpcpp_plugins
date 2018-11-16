@@ -676,7 +676,8 @@ void OpenVRPlugin::on_unload()
 
     if (impl_->original_lens_)
     {
-        rpcore::Globals::base->get_cam_node()->set_lens(impl_->original_lens_);
+        if (rpcore::Globals::base)
+            rpcore::Globals::base->get_cam_node()->set_lens(impl_->original_lens_);
         impl_->original_lens_.clear();
     }
 }
@@ -684,6 +685,18 @@ void OpenVRPlugin::on_unload()
 vr::IVRSystem* OpenVRPlugin::get_vr_system() const
 {
     return impl_->vr_system_;
+}
+
+NodePath OpenVRPlugin::load_model(const std::string& model_name) const
+{
+    return impl_->load_model(*this, model_name);
+}
+
+NodePath OpenVRPlugin::load_model(vr::TrackedDeviceIndex_t unTrackedDeviceIndex) const
+{
+    std::string model_name;
+    get_tracked_device_property(model_name, unTrackedDeviceIndex, vr::Prop_RenderModelName_String);
+    return load_model(model_name);
 }
 
 NodePath OpenVRPlugin::setup_device_node(vr::TrackedDeviceIndex_t unTrackedDeviceIndex)
