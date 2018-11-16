@@ -59,9 +59,6 @@ namespace rpplugins {
 
 RENDER_PIPELINE_PLUGIN_DOWNCAST_IMPL(OpenVRPlugin);
 
-static const LMatrix4f z_to_y = LMatrix4f::convert_mat(CS_zup_right, CS_yup_right);
-static const LMatrix4f y_to_z = LMatrix4f::convert_mat(CS_yup_right, CS_zup_right);
-
 class OpenVRPlugin::Impl
 {
 public:
@@ -187,17 +184,17 @@ void OpenVRPlugin::Impl::setup_camera(const OpenVRPlugin& self)
 
     // film size will be changed in WindowFramework::adjust_dimensions when resizing.
     // so, we need to post-multiply the inverse matrix to preserve our projection matrix.
-    vr_lens->set_left_eye_mat(z_to_y * proj_mat * vr_lens->get_film_mat_inv());
+    vr_lens->set_left_eye_mat(LMatrix4f::z_to_y_up_mat() * proj_mat * vr_lens->get_film_mat_inv());
 
     // FIXME: fix to projection matrix for stereo culling mono projection for culling
     // mono lens (see PerspectiveLens::do_compute_projection_mat)
     proj_mat(2, 0) = 0;
     proj_mat(2, 1) = 0;
-    vr_lens->set_user_mat(z_to_y * proj_mat * vr_lens->get_film_mat_inv());
+    vr_lens->set_user_mat(LMatrix4f::z_to_y_up_mat() * proj_mat * vr_lens->get_film_mat_inv());
 
     // right
     convert_matrix(vr_system_->GetProjectionMatrix(vr::Eye_Right, vr_lens->get_near(), vr_lens->get_far()), proj_mat);
-    vr_lens->set_right_eye_mat(z_to_y * proj_mat * vr_lens->get_film_mat_inv());
+    vr_lens->set_right_eye_mat(LMatrix4f::z_to_y_up_mat() * proj_mat * vr_lens->get_film_mat_inv());
 
     if (std::abs(original_lens_->get_aspect_ratio() - (proj_mat[1][1] / proj_mat[0][0])) < 0.00001f)
         self.error("Aspect ratio of render target is not same as that of VR resolution.");
@@ -460,16 +457,9 @@ NodePath OpenVRPlugin::Impl::create_mesh(const std::string& model_name, vr::Rend
     PT(Geom) geom = new Geom(vdata);
     geom->add_primitive(prim);
 
-    PT(GeomNode) geom_node = new GeomNode(model_name);
-    geom_node->add_geom(geom);
-
-    rpcore::RPGeomNode rpgeom_node(geom_node);
-
     rpcore::RPMaterial mat;
     mat.set_roughness(1);
     mat.set_specular_ior(1);
-
-    rpgeom_node.set_material(0, mat);
 
     PT(Texture) texture = new Texture(model_name);
     texture->setup_2d_texture(render_texture->unWidth, render_texture->unHeight, Texture::ComponentType::T_unsigned_byte, Texture::Format::F_rgba8);
@@ -489,7 +479,13 @@ NodePath OpenVRPlugin::Impl::create_mesh(const std::string& model_name, vr::Rend
     texture->set_magfilter(SamplerState::FT_linear);
     texture->set_minfilter(SamplerState::FT_linear_mipmap_linear);
 
-    rpgeom_node.set_texture(0, texture);
+    CPT(RenderState) state = RenderState::make(
+        MaterialAttrib::make(mat.get_material()),
+        TextureAttrib::make(texture)
+    );
+
+    PT(GeomNode) geom_node = new GeomNode(model_name);
+    geom_node->add_geom(geom, state);
 
     return NodePath(geom_node);
 }
@@ -508,7 +504,7 @@ void OpenVRPlugin::Impl::wait_get_poses()
         LMatrix4f hmd_mat;
         convert_matrix(tracked_device_pose_[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking, hmd_mat);
 
-        hmd_mat = z_to_y * hmd_mat * y_to_z;
+        hmd_mat = LMatrix4f::z_to_y_up_mat() * hmd_mat * LMatrix4f::y_to_z_up_mat();
 
         if (create_device_node_ || load_render_model_)
             device_nodes_[vr::k_unTrackedDeviceIndex_Hmd].set_mat(hmd_mat);
@@ -531,7 +527,7 @@ void OpenVRPlugin::Impl::wait_get_poses()
                 left_eye_mat[3][0] *= distance_scale_;
                 left_eye_mat[3][1] *= distance_scale_;
                 left_eye_mat[3][2] *= distance_scale_;
-                leye_np.set_mat(z_to_y * left_eye_mat * y_to_z);
+                leye_np.set_mat(LMatrix4f::z_to_y_up_mat() * left_eye_mat * LMatrix4f::y_to_z_up_mat());
             }
 
             NodePath reye_np = cam.find("right_eye");
@@ -542,7 +538,7 @@ void OpenVRPlugin::Impl::wait_get_poses()
                 right_eye_mat[3][0] *= distance_scale_;
                 right_eye_mat[3][1] *= distance_scale_;
                 right_eye_mat[3][2] *= distance_scale_;
-                reye_np.set_mat(z_to_y * right_eye_mat * y_to_z);
+                reye_np.set_mat(LMatrix4f::z_to_y_up_mat() * right_eye_mat * LMatrix4f::y_to_z_up_mat());
             }
         }
     }
@@ -554,9 +550,9 @@ void OpenVRPlugin::Impl::wait_get_poses()
     {
         if (tracked_device_pose_[device_index].bPoseIsValid && !device_nodes_[device_index].is_empty())
         {
-            device_nodes_[device_index].set_mat(z_to_y *
+            device_nodes_[device_index].set_mat(LMatrix4f::z_to_y_up_mat() *
                 convert_matrix(tracked_device_pose_[device_index].mDeviceToAbsoluteTracking)
-                * y_to_z);
+                * LMatrix4f::y_to_z_up_mat());
         }
     }
 }
@@ -739,6 +735,11 @@ const vr::TrackedDevicePose_t& OpenVRPlugin::get_tracked_device_pose(vr::Tracked
 vr::ETrackedDeviceClass OpenVRPlugin::get_tracked_device_class(vr::TrackedDeviceIndex_t device_index) const
 {
     return impl_->vr_system_->GetTrackedDeviceClass(device_index);
+}
+
+bool OpenVRPlugin::is_tracked_device_connected(vr::TrackedDeviceIndex_t device_index) const
+{
+    return impl_->vr_system_->IsTrackedDeviceConnected(device_index);
 }
 
 bool OpenVRPlugin::has_tracked_camera() const
